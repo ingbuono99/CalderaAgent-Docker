@@ -56,8 +56,8 @@ class OperationLoop:
                 print("New server answer",beaconanswer)
                 beaconanswer = self.decodeshell_to_json(beaconanswer)
                 sleep = beaconanswer['sleep']
-                print("sleeeeppppp", sleep)
                 time.sleep(sleep)
+               
             except Exception as e:
                 print('[-] Operation loop error: %s' % e)
                 time.sleep(30)
@@ -85,6 +85,7 @@ class OperationLoop:
     
     def build_response(self, output):
         global instruction_id
+        global paw
         return dict(
             paw = paw,
             results = [{
@@ -122,7 +123,7 @@ def build_profile(server_addr):
 #Typical "if" in python's script. It checks if the script was executed directly as a script (opposed as if it was a submodule)
 if __name__ == '__main__':  
     parser = argparse.ArgumentParser('Start here')
-    parser.add_argument('-W', '--website', required=False, default='http://localhost:8888/weather')   #As for Ragdoll Agent, if not specified (with -W, remember the /weather!!) the default URL will be that one 
+    parser.add_argument('-W', '--website', required=False, default='http://localhost:8888/beacon')   #Like Ragdoll Agent but different endpoint, if not specified (with -W, remember the /beacon!!) the default URL will be that one 
     #In the original agent (private repo), here'll go another argument for the url of the remote agent
     args = parser.parse_args()
     try:
