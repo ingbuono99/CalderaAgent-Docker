@@ -10,7 +10,6 @@ import time
 
 class OperationLoop:
     instruction_id = None
-    paw = None
     def __init__(self, profile):
         self.profile = profile
         self.file_download_endpoint = "/file/download"
@@ -37,7 +36,6 @@ class OperationLoop:
     def _send_beacon(self):
         profilejson = json.dumps(self.profile).encode('utf-8')
         profileb64 =  base64.b64encode(profilejson).decode('utf-8')
-        print("profileeeeeeee", profileb64)
         curl_cmd = f"curl -s -X POST -d {profileb64} localhost:8888/beacon"
         raw_result = subprocess.run(curl_cmd, shell=True, capture_output=True) #shell=True may be a security concern. Watch out!
 
@@ -70,7 +68,6 @@ class OperationLoop:
         beaconb64 =  base64.b64encode(responsejson).decode('utf-8')
         curl_cmd = f"curl -s -X POST -d {beaconb64} localhost:8888/beacon"
         beaconanswer = subprocess.run(curl_cmd, shell=True, capture_output=True)
-        print("New server answer",beaconanswer)
         beaconanswer = self.decodeshell_to_json(beaconanswer)
         return beaconanswer['sleep']
 
