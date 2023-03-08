@@ -50,6 +50,8 @@ class OperationLoop:
         #In the first step we'll execute the given instruction
         return json.loads(beacon['instructions'])
     
+
+    #FORSE QUA BISOGNA CAMBIARE PERCHÈ IN RAGDOLL VA A SCORRERE TRA LE VARIE ISTRUZIONI, MA IO VEDO CHE NE MANDA SEMPRE UNA SOLA
     def _handle_instructions(self, instructions):
         global instruction_id
         if len(instructions) == 1:
@@ -66,6 +68,7 @@ class OperationLoop:
         #Send back the beacon response to Caldera server
         responsejson = json.dumps(response).encode('utf-8')
         beaconb64 =  base64.b64encode(responsejson).decode('utf-8')
+        print("VEDI QUA" + beaconb64)
         curl_cmd = f"curl -s -X POST -d {beaconb64} localhost:8888/beacon"
         beaconanswer = subprocess.run(curl_cmd, shell=True, capture_output=True)
         beaconanswer = self.decodeshell_to_json(beaconanswer)
@@ -80,7 +83,7 @@ class OperationLoop:
             paw = self.profile['paw'],
             results = [{
             'id' : instruction_id,
-            'output' : output.stdout.decode('utf-8'),
+            'output' : base64.b64encode(output.stdout).decode('utf-8'), #IMPORTANT: Caldera expects to find the results base64 encoded. It is a must do it here, even if shortly after we're going to encode the entire payload of the http post.
             'status' : output.returncode,
             'pid' : os.getpid()
             }]
