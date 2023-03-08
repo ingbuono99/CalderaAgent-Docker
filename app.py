@@ -18,9 +18,23 @@ class OperationLoop:
     
 
     def start(self):
-        global paw
-        print(self.profile)
-        # Construct the curl command and execute it using subprocess. 
+        self.profile['results'] = []
+        print('[*] Sending beacon for %s' % self.profile.get('paw', 'unknown'))
+        while True:
+            try:
+                
+                beacon = self._send_beacon()
+                self.profile['results'].clear()
+                instructions = self._next_instructions(beacon=beacon)
+                sleep = self._handle_instructions(instructions)
+                time.sleep(sleep)
+            except Exception as e:
+                print('[-] Operation loop error: %s' % e)
+                time.sleep(30)
+
+       
+
+    def _send_beacon(self):
         profilejson = json.dumps(self.profile).encode('utf-8')
         profileb64 =  base64.b64encode(profilejson).decode('utf-8')
         print("profileeeeeeee", profileb64)
@@ -31,46 +45,15 @@ class OperationLoop:
         result_dict = self.decodeshell_to_json(raw_result)  #from here we can retrieve all parameters given by caldera server
         
         #Retrieve all needeed parameters
-        paw = result_dict['paw']
-        
-        # Print the output
-        print ("Agent deployed. Paw assigned:")
-        print(paw)
-        self.AgentLoop(result_dict)
-
-    def AgentLoop(self, beaconanswer):
-        while True:
-            try:
-                print("Now in the operation loop")
-
-                #In the first step we'll execute the given instruction
-                output = self.execute_command(beaconanswer)
-
-                #Then we will construct the beacon to send to the server as an answer
-                response = self.build_response(output)
-                #Send back the beacon response to Caldera server
-                responsejson = json.dumps(response).encode('utf-8')
-                beaconb64 =  base64.b64encode(responsejson).decode('utf-8')
-                curl_cmd = f"curl -s -X POST -d {beaconb64} localhost:8888/beacon"
-                beaconanswer = subprocess.run(curl_cmd, shell=True, capture_output=True)
-                print("New server answer",beaconanswer)
-                beaconanswer = self.decodeshell_to_json(beaconanswer)
-                sleep = beaconanswer['sleep']
-                time.sleep(sleep)
-               
-            except Exception as e:
-                print('[-] Operation loop error: %s' % e)
-                time.sleep(30)
-
-
-
-    def execute_command(self, beaconanswer):
-        print(beaconanswer)
+        self.profile['paw'] = result_dict['paw']
+        return result_dict
+    
+    def _next_instructions(self, beacon):
+        #In the first step we'll execute the given instruction
+        return json.loads(beacon['instructions'])
+    
+    def _handle_instructions(self, instructions):
         global instruction_id
-        # convert stringified instructions to a list of dictionaries
-        instructions = json.loads(beaconanswer['instructions'])
-        # retrieve the command field from the first dictionary in the instructions list
-        #This if is kind of needed because sometimes the instruction in the beacon answer is codified not like a list and is empty
         if len(instructions) == 1:
             dec = instructions[0]     
             command = json.loads(dec)['command']  #the command here is in base64
@@ -81,13 +64,23 @@ class OperationLoop:
         print(decoded_command)
         output = subprocess.run(decoded_command, shell=True, capture_output=True)
         print("Risultato shell:",output)
-        return output
+        response = self.build_response(output)
+        #Send back the beacon response to Caldera server
+        responsejson = json.dumps(response).encode('utf-8')
+        beaconb64 =  base64.b64encode(responsejson).decode('utf-8')
+        curl_cmd = f"curl -s -X POST -d {beaconb64} localhost:8888/beacon"
+        beaconanswer = subprocess.run(curl_cmd, shell=True, capture_output=True)
+        print("New server answer",beaconanswer)
+        beaconanswer = self.decodeshell_to_json(beaconanswer)
+        return beaconanswer['sleep']
+
+
+
     
     def build_response(self, output):
         global instruction_id
-        global paw
         return dict(
-            paw = paw,
+            paw = self.profile['paw'],
             results = [{
             'id' : instruction_id,
             'output' : output.stdout.decode('utf-8'),
