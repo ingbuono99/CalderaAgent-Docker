@@ -13,4 +13,4 @@ Update:
 Now there is the docker-compose.yml, but it has to be launched with:
 `docker compose-up -d`
 
-The **-d** is at this time necessary because otherwise the container will stuck to "Attaching...", that's because the .sh file hangs the shell.
+The **-d** is necessary right now, because otherwise the container will stuck to "Attaching...". That's because the .sh file hangs the shell.
